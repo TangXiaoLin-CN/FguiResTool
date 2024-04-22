@@ -463,6 +463,7 @@ class MyMainWin(QMainWindow):
         
         cellWidth = 300
         cellHeight = 300
+        cellSkip = 4
 
         #定义单元格格式
         cell_format = wb.add_format()
@@ -478,8 +479,9 @@ class MyMainWin(QMainWindow):
         
         #输出重复资源
         for i,v in enumerate(self.hash_list):
-            sheet.write(i + 1,0,v.com_list[0].fileName,cell_format)
+            sheet.write((i * cellSkip) + 1,0,v.com_list[0].name,cell_format)
             sheet.set_row_pixels(i + 1,cellHeight) #设置高度
+            finalWidth = cellWidth
             for j,vv in enumerate(v.com_list):
                 image = Image.open(vv.url)
                 width,height = image.size
@@ -491,11 +493,18 @@ class MyMainWin(QMainWindow):
                 if width > cellWidth:
                     scaledWidth = scale * (yScale * height)
                     xScale = scaledWidth / width
-                    if scaledWidth > cellWidth:
-                        sheet.set_column_pixels(i + 1,i + 1,scaledWidth)
+                    if scaledWidth > finalWidth:
+                        finalWidth = scaledWidth
+                        
+                sheet.write((i * cellSkip) + 2,0,"是否使用",cell_format)
+                sheet.write((i * cellSkip) + 2,j + 1,"是" if len(vv.refs) > 0 else "否") 
+                sheet.insert_image((i * cellSkip) + 1,j + 1,vv.url,{'x_scale':xScale,'y_scale':yScale})
+                sheet.write((i * cellSkip) + 3,0,"包内路径",cell_format)
+                sheet.write((i * cellSkip) + 3,j + 1,vv.fileName)
+                sheet.write((i * cellSkip) + 4,0,"包内URL",cell_format)
+                sheet.write((i * cellSkip) + 4,j + 1,'ui://{0}'.format(vv.uid))
 
-                sheet.insert_image(i + 1,j + 1,vv.url,{'x_scale':xScale,'y_scale':yScale})
-
+        sheet.set_column_pixels(i + 1,i + 1,finalWidth)
         wb.close()
 
     def show_source_list(self):
