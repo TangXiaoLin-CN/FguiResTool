@@ -480,7 +480,7 @@ class MyMainWin(QMainWindow):
         #输出重复资源
         for i,v in enumerate(self.hash_list):
             sheet.write((i * cellSkip) + 1,0,v.com_list[0].name,cell_format)
-            sheet.set_row_pixels(i + 1,cellHeight) #设置高度
+            sheet.set_row_pixels((i * cellSkip) + 1,cellHeight) #设置高度
             finalWidth = cellWidth
             for j,vv in enumerate(v.com_list):
                 image = Image.open(vv.url)
@@ -503,8 +503,8 @@ class MyMainWin(QMainWindow):
                 sheet.write((i * cellSkip) + 3,j + 1,vv.fileName)
                 sheet.write((i * cellSkip) + 4,0,"包内URL",cell_format)
                 sheet.write((i * cellSkip) + 4,j + 1,'ui://{0}'.format(vv.uid))
+            sheet.set_column_pixels(i + 1,i + 1,finalWidth)
 
-        sheet.set_column_pixels(i + 1,i + 1,finalWidth)
         wb.close()
 
     def show_source_list(self):
