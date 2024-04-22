@@ -83,9 +83,23 @@ class VoHash:
         else:
             return '无'
 
+class VoName:
+    com_list: List[ComVo] = None
+    # 保留的uid
+    reserved_uid = ''
+
+    def __init__(self):
+        self.com_list = []
+
+    def get_name(self):
+        if len(self.com_list) > 0:
+            return self.com_list[0].name
+        else:
+            return '无'
 
 com_map = {}
-md5_map = {}
+md5_map = {}  #md5映射表
+name_map = {} #同名引射表
 
 
 def get_com_by_uid(p_uid) -> ComVo:
@@ -98,6 +112,8 @@ def analyse_xml(p_root_url):
     path_res = Path(p_root_url) / 'assets'
     global md5_map
     md5_map = {}
+    global name_map
+    name_map = {}
     name_pkg_id_map = {}  # 包名与包id的映射
     list_file = sorted(path_res.rglob('package.xml'))
     for v in list_file:
@@ -120,6 +136,7 @@ def analyse_xml(p_root_url):
             else:
                 url = str(path_img.absolute())
                 md5_str = hashs(url)
+                com_name = com.get('name')
                 com_vo = ComVo()
                 com_vo.tree = xml_vo
                 com_vo.root = root
@@ -128,7 +145,7 @@ def analyse_xml(p_root_url):
                 com_vo.uid = pkg_id + com_id
                 com_vo.pkg_id = pkg_id
                 com_vo.com_id = com_id
-                com_vo.name = com.get('name')
+                com_vo.name = com_name
                 com_vo.fileName = path_img.relative_to(v.parent).as_posix()
                 com_vo.rela_add = path_img.relative_to(path_res).as_posix()
                 if com.get('exported') == 'true':
@@ -144,7 +161,13 @@ def analyse_xml(p_root_url):
                 else:
                     hash_vo = md5_map[md5_str]
                 hash_vo.com_list.append(com_vo)
-
+                
+                if com_name not in name_map:
+                    name_map[com_name] = name_vo = VoName()
+                else:
+                    name_vo = name_map[com_name]
+                name_vo.com_list.append(com_vo)
+                    
         excluded_str = root.find('publish').get('excluded')
         if excluded_str:
             excluded_list = excluded_str.split(',')

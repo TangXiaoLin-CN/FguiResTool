@@ -22,6 +22,9 @@ class Ui_MainWindow(object):
         self.btnSearch = QtWidgets.QPushButton(self.centralwidget)
         self.btnSearch.setGeometry(QtCore.QRect(0, 520, 75, 23))
         self.btnSearch.setObjectName("btnSearch")
+        self.btnExport = QtWidgets.QPushButton(self.centralwidget)
+        self.btnExport.setGeometry(QtCore.QRect(95, 520, 75, 23))
+        self.btnExport.setObjectName("btnExport")
         self.listShow = QtWidgets.QListView(self.centralwidget)
         self.listShow.setGeometry(QtCore.QRect(280, 0, 271, 391))
         self.listShow.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -120,6 +123,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.btnSearch.setText(_translate("MainWindow", "刷新"))
+        self.btnExport.setText(_translate("MainWindow", "导出"))
         self.btnSave.setText(_translate("MainWindow", "设置为保留资源"))
         self.btnMerge.setText(_translate("MainWindow", "合并选中资源"))
         self.btnClose.setText(_translate("MainWindow", "关闭"))
