@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QLa
 import CheckResMd5 as crm
 import mainGUI
 
+#UI转换命令:pyuic5 gui/mainGUI.ui -o mainGUI.py
 
 # 全局自定义事件 参考：https://zhuanlan.zhihu.com/p/89759440
 class GSignal(QObject):
