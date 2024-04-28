@@ -85,7 +85,8 @@ class VoHash:
 
 
 com_map = {}
-repCom_map = []
+repCom_map = {}
+repCom_list = []
 
 def get_com_by_uid(p_uid) -> ComVo:
     return com_map[p_uid]
@@ -257,8 +258,14 @@ def importDealFunc(content):
 def deal_rep_com(*args) -> []:
     print("开始处理")
     print(dealFunc)
-    repCom_map = dealFunc(com_map,*args)
-    return repCom_map
+    global repCom_map
+    global repCom_list
+    repCom_map = {}
+    repCom_list = []
+    repCom_list = dealFunc(com_map,*args)
+    for _,v in enumerate(repCom_list):
+        repCom_map[v.key] = v
+    return repCom_list
 
 if __name__ == '__main__':
     root_url = 'I:/newQz/client/yxqzUI'

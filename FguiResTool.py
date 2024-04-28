@@ -55,7 +55,7 @@ class ComItem(QWidget):
         self.cur_data = data
         des_str = data.name + '@' + data.pkg
 
-        hash_vo: crm.VoHash = crm.com_map[data.uid]
+        hash_vo: crm.VoHash = crm.repCom_map[data.md5]
         if hash_vo.reserved_uid == data.uid:  # 保留资源着色显示
             des_str = '<font color="#0000ff">{0}</font>'.format(des_str)
         if data.exclude:  # 设置为图集排除的资源
@@ -251,7 +251,7 @@ class MyMainWin(QMainWindow):
             mi = model.index(i, 0)
             item: SourceItem = self.view.listAll.indexWidget(mi)
             if item.cur_data.key == p_md5:
-                voh: crm.VoHash = crm.md5_map[p_md5]
+                voh: crm.VoHash = crm.repCom_map[p_md5]
                 for j in range(len(voh.com_list) - 1, -1, -1):
                     voc = voh.com_list[j]
                     if voc.uid == p_uid:
