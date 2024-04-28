@@ -1,11 +1,8 @@
 import json
 import os
 import sys
-import xlsxwriter
 from pathlib import Path
 from typing import List
-from PIL import Image
-from io import BytesIO
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QSize, QModelIndex, pyqtSignal, QObject, QDir
@@ -16,7 +13,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QLa
 import CheckResMd5 as crm
 import mainGUI
 
-#UI转换命令:pyuic5 gui/mainGUI.ui -o mainGUI.py
 
 # 全局自定义事件 参考：https://zhuanlan.zhihu.com/p/89759440
 class GSignal(QObject):
@@ -59,7 +55,7 @@ class ComItem(QWidget):
         self.cur_data = data
         des_str = data.name + '@' + data.pkg
 
-        hash_vo: crm.VoHash = crm.md5_map[data.md5]
+        hash_vo: crm.VoHash = crm.com_map[data.uid]
         if hash_vo.reserved_uid == data.uid:  # 保留资源着色显示
             des_str = '<font color="#0000ff">{0}</font>'.format(des_str)
         if data.exclude:  # 设置为图集排除的资源
@@ -88,10 +84,9 @@ class ComItem(QWidget):
         menu.addSeparator()
         op1 = menu.addAction('打开文件')
         op2 = menu.addAction('定位文件')
-        op4_1 = menu.addAction('复制文件名')
-        op4 = menu.addAction('复制文件名(带后缀名)')
-        op5 = menu.addAction('复制url')
         op3 = menu.addAction('打开package.xml')
+        op4 = menu.addAction('复制文件名')
+        op5 = menu.addAction('复制url')
         menu.addSeparator()
         op6 = menu.addAction('删除资源')
         op99 = None
@@ -112,10 +107,6 @@ class ComItem(QWidget):
         elif action == op4:
             cb = QGuiApplication.clipboard()
             cb.setText(self.cur_data.name)
-
-        elif action == op4_1:
-            cb = QGuiApplication.clipboard()
-            cb.setText(self.cur_data.name[:-4])
 
         elif action == op5:
             cb = QGuiApplication.clipboard()
@@ -178,6 +169,7 @@ class MyMainWin(QMainWindow):
         self.root_url = ''
 
         self.temp_path = Path(QDir.currentPath()) / 'temp' / 'temp.txt'
+        self.dealFunc_path = Path(QDir.currentPath()) / 'dealFunc.py' #读取数据处理函数的位置
         # self.temp_path = Path(QDir.tempPath())
 
         if not self.temp_path.exists():
@@ -194,7 +186,6 @@ class MyMainWin(QMainWindow):
 
         self.view.btnClose.clicked.connect(self.on_close_click)
         self.view.btnSearch.clicked.connect(self.on_search_click)
-        self.view.btnExport.clicked.connect(self.on_exportExcel_click)
         self.view.btnSelectAll.clicked.connect(self.on_select_all)
         self.view.btnReverse.clicked.connect(self.on_reverse)
         self.view.btnCancelAll.clicked.connect(self.on_cancel_all)
@@ -425,7 +416,6 @@ class MyMainWin(QMainWindow):
             vo = self.cur_hash_vo.com_list[cur_index.row()]
             self.cur_com_vo = vo
             self.show_ref_list(vo.refs)
-            self.show_preview(vo.url)
         pass
 
     def on_close_click(self):
@@ -436,77 +426,30 @@ class MyMainWin(QMainWindow):
         if not self.root_url:
             QMessageBox.warning(self, '错误', '请先打开一个fgui项目目录', QMessageBox.Ok)
             return
+        
+        #尝试导入处理函数
+        try:
+            dealFuncFile = open(self.dealFunc_path, "r")
+        except:
+            QMessageBox.warning(self, '错误', '没有找到对应的处理函数文件', QMessageBox.Ok)
+            return
+        #尝试解析处理函数
+        try:
+            crm.importDealFunc(dealFuncFile.read())
+        except:
+            QMessageBox.warning(self, '错误', '处理函数文件语法错误', QMessageBox.Ok)
+            return
         crm.analyse_xml(self.root_url)
-        self.name_map = crm.name_map
-        self.hash_list = []
-        for k in self.name_map:
-            vo: crm.VoName = self.name_map[k]
-            if len(vo.com_list) < 2:
-                # 只显示重复的资源
-                continue
-            self.hash_list.append(vo)
-
+        try:
+            self.hash_list = crm.deal_rep_com(1)
+        except:
+            QMessageBox.warning(self, '错误', '处理函数报错，请检查！', QMessageBox.Ok)
+            return
         self.hash_list.sort(key=lambda e: len(e.com_list), reverse=True)
         self.show_source_list()
 
         self.statusBar().showMessage('共有{0}个重复资源'.format(len(self.hash_list)))
         pass
-
-    def on_exportExcel_click(self):
-        if not self.root_url:
-            QMessageBox.warning(self, '错误', '请先打开一个fgui项目目录', QMessageBox.Ok)
-            return
-        if len(self.hash_list) < 1:
-            return
-        
-        wb = xlsxwriter.Workbook("重复资源表.xlsx")  # 创建一个工作薄
-        sheet = wb.add_worksheet('同名不同资源')  # 创建一个工作表
-        
-        cellWidth = 300
-        cellHeight = 300
-        cellSkip = 4
-
-        #定义单元格格式
-        cell_format = wb.add_format()
-        cell_format.set_align('center')
-        cell_format.set_align('vcenter')
-
-        # 写入标题
-        sheet.write(0,0,"重复资源名",cell_format)
-        sheet.write(0,1,"资源",cell_format)
-
-        # 设置单元格的宽度
-        sheet.set_column_pixels(0,50,cellWidth)
-        
-        #输出重复资源
-        for i,v in enumerate(self.hash_list):
-            sheet.write((i * cellSkip) + 1,0,v.com_list[0].name,cell_format)
-            sheet.set_row_pixels((i * cellSkip) + 1,cellHeight) #设置高度
-            finalWidth = cellWidth
-            for j,vv in enumerate(v.com_list):
-                image = Image.open(vv.url)
-                width,height = image.size
-                scale = width / height
-                xScale = 1
-                yScale = 1
-                if height > cellHeight :
-                    yScale = cellHeight / height
-                if width > cellWidth:
-                    scaledWidth = scale * (yScale * height)
-                    xScale = scaledWidth / width
-                    if scaledWidth > finalWidth:
-                        finalWidth = scaledWidth
-                        
-                sheet.write((i * cellSkip) + 2,0,"是否使用",cell_format)
-                sheet.write((i * cellSkip) + 2,j + 1,"是" if len(vv.refs) > 0 else "否") 
-                sheet.insert_image((i * cellSkip) + 1,j + 1,vv.url,{'x_scale':xScale,'y_scale':yScale})
-                sheet.write((i * cellSkip) + 3,0,"包内路径",cell_format)
-                sheet.write((i * cellSkip) + 3,j + 1,vv.fileName)
-                sheet.write((i * cellSkip) + 4,0,"包内URL",cell_format)
-                sheet.write((i * cellSkip) + 4,j + 1,'ui://{0}'.format(vv.uid))
-            sheet.set_column_pixels(i + 1,i + 1,finalWidth)
-
-        wb.close()
 
     def show_source_list(self):
         self._model_all = QStandardItemModel(self)

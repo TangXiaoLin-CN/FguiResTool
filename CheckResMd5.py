@@ -83,24 +83,9 @@ class VoHash:
         else:
             return '无'
 
-class VoName:
-    com_list: List[ComVo] = None
-    # 保留的uid
-    reserved_uid = ''
-
-    def __init__(self):
-        self.com_list = []
-
-    def get_name(self):
-        if len(self.com_list) > 0:
-            return self.com_list[0].name
-        else:
-            return '无'
 
 com_map = {}
-md5_map = {}  #md5映射表
-name_map = {} #同名引射表
-
+repCom_map = []
 
 def get_com_by_uid(p_uid) -> ComVo:
     return com_map[p_uid]
@@ -110,10 +95,6 @@ def analyse_xml(p_root_url):
     global com_map
     com_map = {}
     path_res = Path(p_root_url) / 'assets'
-    global md5_map
-    md5_map = {}
-    global name_map
-    name_map = {}
     name_pkg_id_map = {}  # 包名与包id的映射
     list_file = sorted(path_res.rglob('package.xml'))
     for v in list_file:
@@ -136,7 +117,6 @@ def analyse_xml(p_root_url):
             else:
                 url = str(path_img.absolute())
                 md5_str = hashs(url)
-                com_name = com.get('name')
                 com_vo = ComVo()
                 com_vo.tree = xml_vo
                 com_vo.root = root
@@ -145,7 +125,7 @@ def analyse_xml(p_root_url):
                 com_vo.uid = pkg_id + com_id
                 com_vo.pkg_id = pkg_id
                 com_vo.com_id = com_id
-                com_vo.name = com_name
+                com_vo.name = com.get('name')
                 com_vo.fileName = path_img.relative_to(v.parent).as_posix()
                 com_vo.rela_add = path_img.relative_to(path_res).as_posix()
                 if com.get('exported') == 'true':
@@ -155,19 +135,6 @@ def analyse_xml(p_root_url):
                 com_vo.url = url
                 com_map[com_vo.uid] = com_vo
 
-                if md5_str not in md5_map:
-                    md5_map[md5_str] = hash_vo = VoHash()
-                    hash_vo.key = md5_str
-                else:
-                    hash_vo = md5_map[md5_str]
-                hash_vo.com_list.append(com_vo)
-                
-                if com_name not in name_map:
-                    name_map[com_name] = name_vo = VoName()
-                else:
-                    name_vo = name_map[com_name]
-                name_vo.com_list.append(com_vo)
-                    
         excluded_str = root.find('publish').get('excluded')
         if excluded_str:
             excluded_list = excluded_str.split(',')
@@ -279,6 +246,19 @@ def analyse_xml(p_root_url):
     #         print(com_map[k].ref_count, com_map[k].ref_pkgs)
     pass
 
+#导入处理函数
+def importDealFunc(content):
+    print("尝试执行")
+    exec(content,globals())
+    print(isHashRepeatition)
+        
+
+#处理重复
+def deal_rep_com(*args) -> []:
+    print("开始处理")
+    print(dealFunc)
+    repCom_map = dealFunc(com_map,*args)
+    return repCom_map
 
 if __name__ == '__main__':
     root_url = 'I:/newQz/client/yxqzUI'

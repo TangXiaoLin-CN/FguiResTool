@@ -146,7 +146,7 @@ class Ui_MainWindow(object):
         self.groupBox_4.setTitle(_translate("MainWindow", "重复项"))
         self.groupBox_2.setTitle(_translate("MainWindow", "依赖引用"))
         self.btnSearch.setText(_translate("MainWindow", "刷新"))
-        self.btnExport.setText(_translate("MainWindow", "导出"))
+        self.btnExport.setText(_translate("MainWindow", "导出excel"))
         self.btnClose.setText(_translate("MainWindow", "关闭"))
         self.btnSelectAll.setToolTip(_translate("MainWindow", "全选"))
         self.btnSelectAll.setText(_translate("MainWindow", "..."))
