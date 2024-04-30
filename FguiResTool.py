@@ -1,8 +1,11 @@
 import json
 import os
 import sys
+import xlsxwriter
 from pathlib import Path
 from typing import List
+from PIL import Image
+from io import BytesIO
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QSize, QModelIndex, pyqtSignal, QObject, QDir
@@ -13,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QLa
 import CheckResMd5 as crm
 import mainGUI
 
+#UI转换命令:pyuic5 gui/mainGUI.ui -o mainGUI.py
 
 # 全局自定义事件 参考：https://zhuanlan.zhihu.com/p/89759440
 class GSignal(QObject):
@@ -24,6 +28,14 @@ class GSignal(QObject):
 
 
 global_signal = GSignal()
+
+class ValueItem(QWidget):
+    def __init__(self, data, *args, **kwargs):
+        super(ValueItem, self).__init__(*args, **kwargs)
+        self.curValue = data
+    
+    def sizeHint(self) -> QSize:
+        return QSize(200, 22)
 
 
 class SourceItem(QWidget):
@@ -83,9 +95,10 @@ class ComItem(QWidget):
         op0 = menu.addAction(self.cur_data.rela_add)
         menu.addSeparator()
         op1 = menu.addAction('打开文件')
+        op3 = menu.addAction('打开包XML文件')
         op2 = menu.addAction('定位文件')
-        op3 = menu.addAction('打开package.xml')
-        op4 = menu.addAction('复制文件名')
+        op4_1 = menu.addAction('复制文件名')
+        op4 = menu.addAction('复制文件名及后缀')
         op5 = menu.addAction('复制url')
         menu.addSeparator()
         op6 = menu.addAction('删除资源')
@@ -108,6 +121,9 @@ class ComItem(QWidget):
             cb = QGuiApplication.clipboard()
             cb.setText(self.cur_data.name)
 
+        elif action == op4_1:
+            cb = QGuiApplication.clipboard()
+            cb.setText(self.cur_data.name[:-4])
         elif action == op5:
             cb = QGuiApplication.clipboard()
             cb.setText('ui://{0}'.format(self.cur_data.uid))
@@ -186,6 +202,7 @@ class MyMainWin(QMainWindow):
 
         self.view.btnClose.clicked.connect(self.on_close_click)
         self.view.btnSearch.clicked.connect(self.on_search_click)
+        self.view.btnExport.clicked.connect(self.on_exportExcel_click)
         self.view.btnSelectAll.clicked.connect(self.on_select_all)
         self.view.btnReverse.clicked.connect(self.on_reverse)
         self.view.btnCancelAll.clicked.connect(self.on_cancel_all)
@@ -395,6 +412,9 @@ class MyMainWin(QMainWindow):
         self.view.labelImg.setPixmap(img)
         pass
 
+    def on_dealFunc_combox_changed(self, cur_index: QModelIndex, last_index: QModelIndex):
+        pass
+
     def on_list_all_selected_change(self, cur_index: QModelIndex, last_index: QModelIndex):
         """
         选中处理函数
@@ -416,6 +436,7 @@ class MyMainWin(QMainWindow):
             vo = self.cur_hash_vo.com_list[cur_index.row()]
             self.cur_com_vo = vo
             self.show_ref_list(vo.refs)
+            self.show_preview(vo.url)
         pass
 
     def on_close_click(self):
@@ -451,6 +472,54 @@ class MyMainWin(QMainWindow):
         self.statusBar().showMessage('共有{0}个重复资源'.format(len(self.hash_list)))
         pass
 
+
+    def on_exportExcel_click(self):
+        if not self.root_url:
+            QMessageBox.warning(self, '错误', '请先打开一个fgui项目目录', QMessageBox.Ok)
+            return
+        if len(self.hash_list) < 1:
+            return
+        
+        wb = xlsxwriter.Workbook("重复资源表.xlsx")  # 创建一个工作薄
+        sheet = wb.add_worksheet('同名不同资源')  # 创建一个工作表
+        
+        cellWidth = 300
+        cellHeight = 300
+
+        #定义单元格格式
+        cell_format = wb.add_format()
+        cell_format.set_align('center')
+        cell_format.set_align('vcenter')
+
+        # 写入标题
+        sheet.write(0,0,"重复资源名",cell_format)
+        sheet.write(0,1,"资源",cell_format)
+
+        # 设置单元格的宽度
+        sheet.set_column_pixels(0,50,cellWidth)
+        
+        #输出重复资源
+        for i,v in enumerate(self.hash_list):
+            sheet.write(i + 1,0,v.com_list[0].fileName,cell_format)
+            sheet.set_row_pixels(i + 1,cellHeight) #设置高度
+            for j,vv in enumerate(v.com_list):
+                image = Image.open(vv.url)
+                width,height = image.size
+                scale = width / height
+                xScale = 1
+                yScale = 1
+                if height > cellHeight :
+                    yScale = cellHeight / height
+                if width > cellWidth:
+                    scaledWidth = scale * (yScale * height)
+                    xScale = scaledWidth / width
+                    if scaledWidth > cellWidth:
+                        sheet.set_column_pixels(i + 1,i + 1,scaledWidth)
+
+                sheet.insert_image(i + 1,j + 1,vv.url,{'x_scale':xScale,'y_scale':yScale})
+
+        wb.close()
+
     def show_source_list(self):
         self._model_all = QStandardItemModel(self)
         self.view.listAll.setModel(self._model_all)
@@ -464,6 +533,14 @@ class MyMainWin(QMainWindow):
             sitem = SourceItem(v)
             item.setSizeHint(sitem.sizeHint())
             self.view.listAll.setIndexWidget(index, sitem)
+
+    def show_dealFunc_list(self):
+        # 选中处理
+        self.view.DealFuncComBox.selectionModel().currentChanged.connect(self.on_dealFunc_combox_changed)
+
+        for v in self.dealFuncList:
+            self.view.listAll.addItem()
+        
 
     def show_com_list(self, p_hash):
         vo = p_hash

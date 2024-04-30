@@ -65,10 +65,16 @@
 #         else:
 #             return '无'
 
+class dealFuncType(Enum):
+    HASHREP = 1, #哈希值重复
+
+funcNameMap = {
+    dealFuncType.HASHREP = "同资源文件"
+}
 
 def dealFunc(com_map,*args):
     funcType = args[0]
-    if(funcType == 1):
+    if(funcType == dealFuncType.HASHREP):
         print("查询hash值重复的资源")
         return isHashRepeatition(com_map)
         
